@@ -1,41 +1,35 @@
-FROM php:5.6-apache
+FROM php:7.2-apache
 
 MAINTAINER Marc Apfelbaum karsasmus82@gmail.com
 
-ENV LP_VERSION 1.2.0-beta5
-ENV PL_FILE leafpub-$PL_VERSION.zip
-ENV PL_VS_DIR leafpub-$PL_VERSION
 ENV HTTP_DIR /var/www/html
-ENV PL_DIR $HTTP_DIR/leafpub
-#ENV PL_DB_FILE $PL_DIR/database.php
+ENV LP_DIR $HTTP_DIR/leafpub
 
 RUN apt-get update && \
     apt-get -y install curl && \
-    apt-get -y install unzip && \
-    apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libmcrypt-dev libpng12-dev && \
+    apt-get -y install unzip git mysql-client && \
+    apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
     apt-get install -y patch && \
     docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ && \
     docker-php-ext-install gd && \
-    docker-php-ext-install pdo_mysql && \
-    rm -f $HTTP_DIR/index.html && \
-    curl -L https://github.com/Leafpub/leafpub/releases/download/1.2.0-beta5/leafpub-1.2.0-beta5.zip > $HTTP_DIR/$PL_FILE && \
-    unzip $HTTP_DIR/$PL_FILE -d $HTTP_DIR && \
-    mv $HTTP_DIR/$PL_VS_DIR/ $PL_DIR && \
+    docker-php-ext-install pdo_mysql 
+
+RUN rm -f $HTTP_DIR/index.html && \
+    git clone https://github.com/leafpub/leafpub $LP_DIR && \  
     chown www-data. $PL_DIR -R && \
-    a2enmod rewrite && \
-    apt-get -y install mysql-client && \
-    rm -rf /var/lib/apt/lists/* && \
-    apt-get clean curl && unzip && \
-    apt-get clean libfreetype6-dev libjpeg62-turbo-dev libmcrypt-dev libpng12-dev
+    a2enmod rewrite
 
-#COPY .htaccess $PL_DIR
-#COPY database.php $PL_DIR
-#COPY docker-entrypoint.sh /
-#COPY postleaf.sql $PL_DIR
-#COPY postleaf.sql.patch $PL_DIR
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
-#ENTRYPOINT ["/docker-entry.sh"]
+RUN composer global require "hirak/prestissimo:^0.3" --prefer-dist --no-progress --no-suggest --optimize-autoloader --classmap-authoritative \
+    && composer clear-cache
 
+COPY .htaccess $LP_DIR
+
+WORKDIR LP_DIR
+
+RUN composer install
 EXPOSE 80
 
 CMD ["apachectl","-D","FOREGROUND"]
