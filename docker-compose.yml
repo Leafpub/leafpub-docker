@@ -1,0 +1,17 @@
+version: "2.0"
+services:
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    ports:
+      - "80:8080"
+  db:
+    image: mariadb
+    environment:
+      MYSQL_DATABASE: leafpub
+      MYSQL_USER: leafpub
+      MYSQL_PASSWORD: leafpub
+      MYSQL_ROOT_PASSWORD: leafpub
